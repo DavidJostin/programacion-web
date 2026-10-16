@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Products CRUD</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="site-header">
+    <div class="inner">
+        <span class="brand">Web Programming</span>
+        <nav class="nav">
+            <a href="index.html" class="active">Page 1 · Products</a>
+            <a href="rickandmorty.html">Page 2 · Rick and Morty</a>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <h1 class="page-title">Products</h1>
+    <p class="page-subtitle">CRUD powered by our own Spring Boot REST API and PostgreSQL.</p>
+
+    <div class="toolbar">
+        <input type="search" id="searchInput" class="search"
+               placeholder="Search by name, category or description..." aria-label="Search products">
+        <button type="button" id="newButton" class="btn btn-primary">+ New product</button>
+    </div>
+
+    <p id="status" class="status" role="status"></p>
+    <section id="productGrid" class="grid" aria-label="Products"></section>
+</main>
+
+<!-- Detail view -->
+<dialog id="detailDialog" aria-labelledby="detailName">
+    <img id="detailImage" class="detail-img" alt="">
+    <div class="dialog-content">
+        <h2 id="detailName"></h2>
+        <dl class="detail-list">
+            <dt>ID</dt><dd id="detailId"></dd>
+            <dt>Price</dt><dd id="detailPrice"></dd>
+            <dt>Category</dt><dd id="detailCategory"></dd>
+            <dt>Stock</dt><dd id="detailStock"></dd>
+            <dt>Description</dt><dd id="detailDescription"></dd>
+        </dl>
+        <div class="dialog-actions">
+            <button type="button" id="detailDelete" class="btn btn-danger">Delete</button>
+            <button type="button" id="detailEdit" class="btn btn-primary">Edit</button>
+            <button type="button" id="detailClose" class="btn">Close</button>
+        </div>
+    </div>
+</dialog>
+
+<!-- Create / edit form -->
+<dialog id="formDialog" aria-labelledby="formTitle">
+    <form id="productForm" class="dialog-content" novalidate>
+        <h2 id="formTitle">New product</h2>
+        <input type="hidden" id="productId">
+        <div class="field">
+            <label for="name">Name *</label>
+            <input type="text" id="name" maxlength="255" required>
+        </div>
+        <div class="field-row">
+            <div class="field">
+                <label for="price">Price *</label>
+                <input type="number" id="price" min="0" step="0.01" required>
+            </div>
+            <div class="field">
+                <label for="stock">Stock</label>
+                <input type="number" id="stock" min="0" step="1">
+            </div>
+        </div>
+        <div class="field">
+            <label for="category">Category</label>
+            <input type="text" id="category" maxlength="255">
+        </div>
+        <div class="field">
+            <label for="imageUrl">Image URL</label>
+            <input type="url" id="imageUrl" maxlength="500" placeholder="https://...">
+        </div>
+        <div class="field">
+            <label for="description">Description</label>
+            <textarea id="description" rows="3" maxlength="1000"></textarea>
+        </div>
+        <p id="formError" class="form-error" role="alert"></p>
+        <div class="dialog-actions">
+            <button type="button" id="formCancel" class="btn">Cancel</button>
+            <button type="submit" id="formSubmit" class="btn btn-primary">Save</button>
+        </div>
+    </form>
+</dialog>
+
+<div id="toast" class="toast" role="status"></div>
+
+<script src="js/products.js"></script>
+</body>
+</html>

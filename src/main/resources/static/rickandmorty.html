@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rick and Morty Explorer</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="site-header">
+    <div class="inner">
+        <span class="brand">Web Programming</span>
+        <nav class="nav">
+            <a href="index.html">Page 1 · Products</a>
+            <a href="rickandmorty.html" class="active">Page 2 · Rick and Morty</a>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <!-- Catalog view -->
+    <section id="catalogView">
+        <h1 class="page-title">Rick and Morty Characters</h1>
+        <p class="page-subtitle">Data from the public API at rickandmortyapi.com</p>
+
+        <div class="toolbar">
+            <input type="search" id="searchInput" class="search"
+                   placeholder="Search characters by name..." aria-label="Search characters">
+        </div>
+
+        <p id="status" class="status" role="status"></p>
+        <section id="characterGrid" class="grid" aria-label="Characters"></section>
+        <div class="load-more">
+            <button type="button" id="loadMoreButton" class="btn btn-primary hidden">Load more</button>
+        </div>
+    </section>
+
+    <!-- Detail view -->
+    <section id="detailView" class="hidden">
+        <button type="button" id="backButton" class="btn">&larr; Back</button>
+        <div id="detailContent" class="detail-view" style="margin-top: 1rem;"></div>
+    </section>
+</main>
+
+<script src="js/rickandmorty.js"></script>
+</body>
+</html>
