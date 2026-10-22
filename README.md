@@ -1,6 +1,6 @@
-# Programación Web · Products CRUD
+# Web Programming · Products CRUD
 
-**Aplicación web full-stack con una API REST en Spring Boot y un cliente en JavaScript puro (Vanilla JS) para gestionar un catálogo de productos. Se ejecuta de forma autónoma, sin servidor de base de datos externo.**
+**Full-stack web application with a Spring Boot REST API and a plain JavaScript (Vanilla JS) client for managing a product catalog. It runs standalone, with no external database server.**
 
 [![Java](https://img.shields.io/badge/Java-17%2B-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://adoptium.net/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.6-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
@@ -13,93 +13,93 @@
 
 ---
 
-## Tabla de contenidos
+## Table of contents
 
-- [Características principales](#características-principales)
-- [Stack tecnológico](#stack-tecnológico)
-- [Requisitos previos](#requisitos-previos)
-- [Instalación y ejecución local](#instalación-y-ejecución-local)
-  - [1. Clonar el repositorio](#1-clonar-el-repositorio)
-  - [2. Ejecutar desde la terminal](#2-ejecutar-desde-la-terminal)
-  - [3. Ejecutar desde IntelliJ IDEA](#3-ejecutar-desde-intellij-idea)
-  - [Puertos y URLs](#puertos-y-urls)
-- [Documentación de la API REST](#documentación-de-la-api-rest)
-  - [Modelo `Product`](#modelo-product)
+- [Key features](#key-features)
+- [Tech stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Local installation and setup](#local-installation-and-setup)
+  - [1. Clone the repository](#1-clone-the-repository)
+  - [2. Run from the terminal](#2-run-from-the-terminal)
+  - [3. Run from IntelliJ IDEA](#3-run-from-intellij-idea)
+  - [Ports and URLs](#ports-and-urls)
+- [REST API documentation](#rest-api-documentation)
+  - [`Product` model](#product-model)
   - [Endpoints](#endpoints)
-  - [Reglas de validación](#reglas-de-validación)
-  - [Ejemplos con cURL](#ejemplos-con-curl)
-- [Consola de base de datos (H2 Console)](#consola-de-base-de-datos-h2-console)
-- [Estructura del proyecto](#estructura-del-proyecto)
+  - [Validation rules](#validation-rules)
+  - [cURL examples](#curl-examples)
+- [Database console (H2 Console)](#database-console-h2-console)
+- [Project structure](#project-structure)
 
 ---
 
-## Características principales
+## Key features
 
-- **Arquitectura desacoplada.** El backend expone una API REST JSON (`/api/products`). El frontend es un cliente estático en HTML5, CSS3 y JavaScript puro, sin frameworks ni build step, que la consume con `fetch`.
-- **Base de datos en memoria (H2).** No hace falta instalar PostgreSQL, MySQL ni ningún otro servidor: la aplicación arranca a la primera en cualquier equipo con un JDK.
-- **Esquema automático.** Hibernate genera las tablas a partir de las entidades JPA al iniciar (`ddl-auto=create-drop`).
-- **Datos de ejemplo automáticos.** El componente `DataSeeder` (`CommandLineRunner`) inserta 6 productos de muestra en cada arranque, así que los endpoints tienen datos listos para consumir.
-- **CRUD completo.** Permite crear, listar, consultar, editar y eliminar productos, con validación en el servidor y en el cliente.
-- **Assets locales.** Las imágenes del catálogo usan un placeholder SVG servido por la propia aplicación (`assets/placeholder.svg`), sin depender de CDNs.
-- **Diseño responsive.** La cuadrícula se adapta a escritorio (3 columnas), tablet (2), móvil vertical (1) y móvil horizontal (4). Incluye modo oscuro automático (`prefers-color-scheme`).
-- **Accesibilidad.** Usa diálogos nativos `<dialog>`, roles ARIA, navegación por teclado y mensajes de estado con `role="status"`.
-- **Página adicional: Rick and Morty Explorer.** Un catálogo con búsqueda, paginación y vista de detalle que consume la API pública [rickandmortyapi.com](https://rickandmortyapi.com/). Reintenta con *backoff* exponencial si la API limita las peticiones (HTTP 429).
+- **Decoupled architecture.** The backend exposes a JSON REST API (`/api/products`). The frontend is a static client built with HTML5, CSS3 and plain JavaScript, with no frameworks and no build step, that consumes it using `fetch`.
+- **In-memory database (H2).** No need to install PostgreSQL, MySQL or any other server: the application starts right away on any machine with a JDK.
+- **Automatic schema.** Hibernate generates the tables from the JPA entities on startup (`ddl-auto=create-drop`).
+- **Automatic sample data.** The `DataSeeder` component (`CommandLineRunner`) inserts 6 sample products on every startup, so the endpoints have data ready to consume.
+- **Full CRUD.** Create, list, view, edit and delete products, with validation on both the server and the client.
+- **Local assets.** Catalog images use an SVG placeholder served by the application itself (`assets/placeholder.svg`), with no dependency on CDNs.
+- **Responsive design.** The grid adapts to desktop (3 columns), tablet (2), mobile portrait (1) and mobile landscape (4). Includes automatic dark mode (`prefers-color-scheme`).
+- **Accessibility.** Uses native `<dialog>` elements, ARIA roles, keyboard navigation and status messages with `role="status"`.
+- **Additional page: Rick and Morty Explorer.** A catalog with search, pagination and a detail view that consumes the public API at [rickandmortyapi.com](https://rickandmortyapi.com/). It retries with exponential *backoff* when the API rate-limits requests (HTTP 429).
 
 > [!NOTE]
-> El CRUD de productos funciona completamente offline. La página **Rick and Morty** sí necesita conexión a internet, porque consume una API pública externa.
+> The products CRUD works completely offline. The **Rick and Morty** page does require an internet connection, since it consumes an external public API.
 
 ---
 
-## Stack tecnológico
+## Tech stack
 
-| Capa | Tecnología | Uso |
+| Layer | Technology | Purpose |
 | :--- | :--- | :--- |
-| **Backend** | Java 17+ | Lenguaje principal |
-| | Spring Boot 3.5.6 | Framework de aplicación y servidor Tomcat embebido |
-| | Spring Web (MVC) | Controladores REST y servicio de contenido estático |
-| | Spring Data JPA / Hibernate 6 | Persistencia y repositorios (`JpaRepository`) |
-| **Frontend** | HTML5 | Estructura semántica de `index.html` y `rickandmorty.html` |
-| | CSS3 | Grid layout, media queries, variables CSS y modo oscuro |
-| | JavaScript (Vanilla, ES2020) | Cliente de la API con `fetch`, renderizado del DOM y diálogos |
-| **Persistencia y herramientas** | H2 Database 2.x | Base de datos relacional en memoria |
-| | Maven Wrapper (`mvnw`) 3.9.9 | Build y gestión de dependencias, sin instalar Maven |
-| | H2 Console | Inspección de la base de datos desde el navegador |
+| **Backend** | Java 17+ | Main language |
+| | Spring Boot 3.5.6 | Application framework and embedded Tomcat server |
+| | Spring Web (MVC) | REST controllers and static content serving |
+| | Spring Data JPA / Hibernate 6 | Persistence and repositories (`JpaRepository`) |
+| **Frontend** | HTML5 | Semantic structure of `index.html` and `rickandmorty.html` |
+| | CSS3 | Grid layout, media queries, CSS variables and dark mode |
+| | JavaScript (Vanilla, ES2020) | API client with `fetch`, DOM rendering and dialogs |
+| **Persistence and tools** | H2 Database 2.x | In-memory relational database |
+| | Maven Wrapper (`mvnw`) 3.9.9 | Build and dependency management, no Maven install required |
+| | H2 Console | Browser-based database inspection |
 
 ---
 
-## Requisitos previos
+## Prerequisites
 
-| Requisito | Versión | Notas |
+| Requirement | Version | Notes |
 | :--- | :--- | :--- |
-| **JDK** | 17 o superior | Recomendado: [Eclipse Temurin](https://adoptium.net/) 17 o 21 |
-| **IDE** (opcional) | IntelliJ IDEA (Community o Ultimate) | También funciona con NetBeans, Eclipse o VS Code |
-| **Git** | Cualquier versión reciente | Para clonar el repositorio |
+| **JDK** | 17 or higher | Recommended: [Eclipse Temurin](https://adoptium.net/) 17 or 21 |
+| **IDE** (optional) | IntelliJ IDEA (Community or Ultimate) | Also works with NetBeans, Eclipse or VS Code |
+| **Git** | Any recent version | To clone the repository |
 
 > [!IMPORTANT]
-> **No** necesitas instalar Maven, PostgreSQL ni ningún servidor de base de datos. El wrapper de Maven descarga automáticamente la versión correcta la primera vez.
+> You do **not** need to install Maven, PostgreSQL or any database server. The Maven wrapper automatically downloads the correct version the first time.
 
-Comprueba tu versión de Java:
+Check your Java version:
 
 ```bash
 java -version
 ```
 
-Si muestra `1.8` o una versión anterior a la 17, configura la variable `JAVA_HOME` para que apunte a un JDK 17+.
+If it shows `1.8` or any version below 17, set the `JAVA_HOME` variable to point to a JDK 17+.
 
 ---
 
-## Instalación y ejecución local
+## Local installation and setup
 
-### 1. Clonar el repositorio
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/DavidJostin/programacion-web.git
 cd programacion-web
 ```
 
-### 2. Ejecutar desde la terminal
+### 2. Run from the terminal
 
-**Opción A: ejecutar directamente con Maven**
+**Option A: run directly with Maven**
 
 ```bash
 # Linux / macOS / Git Bash
@@ -107,66 +107,66 @@ cd programacion-web
 ```
 
 ```powershell
-# Windows (PowerShell o CMD)
+# Windows (PowerShell or CMD)
 .\mvnw.cmd spring-boot:run
 ```
 
-**Opción B: empaquetar como JAR ejecutable y lanzarlo**
+**Option B: package as an executable JAR and run it**
 
 ```bash
-# 1. Compilar y empaquetar
+# 1. Compile and package
 ./mvnw clean package
 
-# 2. Ejecutar el JAR generado
+# 2. Run the generated JAR
 java -jar target/crud-1.0-SNAPSHOT.jar
 ```
 
-Cuando la aplicación esté lista verás en la consola una línea similar a:
+When the application is ready, you will see a line similar to this in the console:
 
 ```text
 Tomcat started on port 8082 (http) with context path '/'
 Started CrudApplication in 3.2 seconds
 ```
 
-### 3. Ejecutar desde IntelliJ IDEA
+### 3. Run from IntelliJ IDEA
 
-1. **File → Open…** y selecciona la carpeta del proyecto (la que contiene `pom.xml`). IntelliJ lo detectará como proyecto Maven.
-2. Verifica el SDK en **File → Project Structure → Project → SDK**: debe ser **17 o superior**.
-3. Espera a que Maven termine de descargar las dependencias (barra de progreso inferior).
-4. Abre `src/main/java/com/example/crud/CrudApplication.java` y pulsa el botón ▶ **Run** junto al método `main`.
+1. **File → Open…** and select the project folder (the one containing `pom.xml`). IntelliJ will detect it as a Maven project.
+2. Check the SDK under **File → Project Structure → Project → SDK**: it must be **17 or higher**.
+3. Wait for Maven to finish downloading the dependencies (progress bar at the bottom).
+4. Open `src/main/java/com/example/crud/CrudApplication.java` and click the ▶ **Run** button next to the `main` method.
 
-### Puertos y URLs
+### Ports and URLs
 
-La aplicación se ejecuta por defecto en el puerto **`8082`** (configurable en `application.properties` con `server.port`).
+By default, the application runs on port **`8082`** (configurable in `application.properties` via `server.port`).
 
-| Recurso | URL |
+| Resource | URL |
 | :--- | :--- |
-| Página 1: CRUD de productos | <http://localhost:8082/> |
-| Página 2: Rick and Morty Explorer | <http://localhost:8082/rickandmorty.html> |
-| API REST de productos | <http://localhost:8082/api/products> |
-| Consola H2 | <http://localhost:8082/h2-console> |
+| Page 1: Products CRUD | <http://localhost:8082/> |
+| Page 2: Rick and Morty Explorer | <http://localhost:8082/rickandmorty.html> |
+| Products REST API | <http://localhost:8082/api/products> |
+| H2 Console | <http://localhost:8082/h2-console> |
 
 > [!TIP]
-> Para cambiar el puerto sin editar archivos, pásalo como argumento: `java -jar target/crud-1.0-SNAPSHOT.jar --server.port=9090`
+> To change the port without editing files, pass it as an argument: `java -jar target/crud-1.0-SNAPSHOT.jar --server.port=9090`
 
 ---
 
-## Documentación de la API REST
+## REST API documentation
 
-**URL base:** `http://localhost:8082/api/products`
-**Formato:** `application/json`
+**Base URL:** `http://localhost:8082/api/products`
+**Format:** `application/json`
 
-### Modelo `Product`
+### `Product` model
 
-| Campo | Tipo | Obligatorio | Restricciones |
+| Field | Type | Required | Constraints |
 | :--- | :--- | :---: | :--- |
-| `id` | `Long` | — | Autogenerado (`IDENTITY`). Se ignora en el cuerpo de las peticiones |
-| `name` | `String` | ✅ | No vacío |
+| `id` | `Long` | — | Auto-generated (`IDENTITY`). Ignored in request bodies |
+| `name` | `String` | ✅ | Not blank |
 | `price` | `Double` | ✅ | `>= 0` |
 | `category` | `String` | ❌ | — |
-| `stock` | `Integer` | ❌ | `>= 0` si se envía |
-| `description` | `String` | ❌ | Máx. 1000 caracteres |
-| `imageUrl` | `String` | ❌ | Máx. 500 caracteres |
+| `stock` | `Integer` | ❌ | `>= 0` if provided |
+| `description` | `String` | ❌ | Max. 1000 characters |
+| `imageUrl` | `String` | ❌ | Max. 500 characters |
 
 ```json
 {
@@ -182,80 +182,80 @@ La aplicación se ejecuta por defecto en el puerto **`8082`** (configurable en `
 
 ### Endpoints
 
-| Método | Endpoint | Descripción | Respuestas |
+| Method | Endpoint | Description | Responses |
 | :---: | :--- | :--- | :--- |
-| ![GET](https://img.shields.io/badge/GET-0969DA?style=flat-square) | `/api/products` | Lista todos los productos | `200 OK` |
-| ![GET](https://img.shields.io/badge/GET-0969DA?style=flat-square) | `/api/products/{id}` | Obtiene un producto por su ID | `200 OK` · `404 Not Found` |
-| ![POST](https://img.shields.io/badge/POST-1A7F37?style=flat-square) | `/api/products` | Crea un producto nuevo | `201 Created` · `400 Bad Request` |
-| ![PUT](https://img.shields.io/badge/PUT-9A6700?style=flat-square) | `/api/products/{id}` | Reemplaza un producto existente | `200 OK` · `400 Bad Request` · `404 Not Found` |
-| ![DELETE](https://img.shields.io/badge/DELETE-CF222E?style=flat-square) | `/api/products/{id}` | Elimina un producto | `204 No Content` · `404 Not Found` |
+| ![GET](https://img.shields.io/badge/GET-0969DA?style=flat-square) | `/api/products` | Lists all products | `200 OK` |
+| ![GET](https://img.shields.io/badge/GET-0969DA?style=flat-square) | `/api/products/{id}` | Gets a product by its ID | `200 OK` · `404 Not Found` |
+| ![POST](https://img.shields.io/badge/POST-1A7F37?style=flat-square) | `/api/products` | Creates a new product | `201 Created` · `400 Bad Request` |
+| ![PUT](https://img.shields.io/badge/PUT-9A6700?style=flat-square) | `/api/products/{id}` | Replaces an existing product | `200 OK` · `400 Bad Request` · `404 Not Found` |
+| ![DELETE](https://img.shields.io/badge/DELETE-CF222E?style=flat-square) | `/api/products/{id}` | Deletes a product | `204 No Content` · `404 Not Found` |
 
-### Reglas de validación
+### Validation rules
 
-Si la validación falla, la API responde `400 Bad Request` con un cuerpo JSON que describe el error:
+If validation fails, the API responds with `400 Bad Request` and a JSON body describing the error:
 
 ```json
 { "error": "Price must be zero or greater" }
 ```
 
-| Condición | Mensaje |
+| Condition | Message |
 | :--- | :--- |
-| `name` nulo o vacío | `Name is required` |
-| `price` nulo o negativo | `Price must be zero or greater` |
-| `stock` negativo | `Stock must be zero or greater` |
+| `name` null or blank | `Name is required` |
+| `price` null or negative | `Price must be zero or greater` |
+| `stock` negative | `Stock must be zero or greater` |
 
-### Ejemplos con cURL
+### cURL examples
 
 ```bash
-# Listar productos
+# List products
 curl http://localhost:8082/api/products
 
-# Obtener un producto
+# Get a product
 curl http://localhost:8082/api/products/1
 
-# Crear un producto
+# Create a product
 curl -X POST http://localhost:8082/api/products \
      -H "Content-Type: application/json" \
      -d '{"name":"USB-C Hub","price":39.90,"category":"Accessories","stock":50}'
 
-# Actualizar un producto
+# Update a product
 curl -X PUT http://localhost:8082/api/products/1 \
      -H "Content-Type: application/json" \
      -d '{"name":"Laptop Pro 14 (2026)","price":1199.99,"category":"Computers","stock":10}'
 
-# Eliminar un producto
+# Delete a product
 curl -X DELETE http://localhost:8082/api/products/1
 ```
 
 > [!WARNING]
-> `PUT` reemplaza el recurso completo: los campos que no envíes quedarán en `null`.
+> `PUT` replaces the entire resource: any fields you don't send will be set to `null`.
 
 ---
 
-## Consola de base de datos (H2 Console)
+## Database console (H2 Console)
 
-La consola web de H2 está habilitada para inspeccionar y consultar la base de datos mientras la aplicación se ejecuta.
+The H2 web console is enabled so you can inspect and query the database while the application is running.
 
-1. Con la aplicación en marcha, abre <http://localhost:8082/h2-console>.
-2. Introduce los siguientes datos de conexión:
+1. With the application running, open <http://localhost:8082/h2-console>.
+2. Enter the following connection details:
 
-   | Campo | Valor |
+   | Field | Value |
    | :--- | :--- |
    | **Driver Class** | `org.h2.Driver` |
    | **JDBC URL** | `jdbc:h2:mem:crud_db` |
    | **User Name** | `sa` |
-   | **Password** | *(dejar vacío)* |
+   | **Password** | *(leave empty)* |
 
-3. Pulsa **Connect** y ejecuta, por ejemplo:
+3. Click **Connect** and run, for example:
 
    ```sql
    SELECT * FROM PRODUCT;
    ```
 
 > [!CAUTION]
-> La base de datos vive **en memoria**: todos los cambios se pierden al detener la aplicación y en cada arranque se recrean los 6 productos de ejemplo. Para conservar los datos entre ejecuciones, cambia la URL a un archivo, por ejemplo `jdbc:h2:file:./data/crud_db`, y `ddl-auto` a `update`.
+> The database lives **in memory**: all changes are lost when the application stops, and the 6 sample products are recreated on every startup. To keep data between runs, change the URL to a file, for example `jdbc:h2:file:./data/crud_db`, and set `ddl-auto` to `update`.
 
-**Configuración relevante** (`src/main/resources/application.properties`):
+**Relevant configuration** (`src/main/resources/application.properties`):
 
 ```properties
 server.port=8082
@@ -273,36 +273,36 @@ spring.h2.console.enabled=true
 
 ---
 
-## Estructura del proyecto
+## Project structure
 
 ```text
 programacion-web/
 ├── .mvn/wrapper/
-│   └── maven-wrapper.properties      # Versión de Maven usada por el wrapper
+│   └── maven-wrapper.properties      # Maven version used by the wrapper
 ├── src/
 │   └── main/
 │       ├── java/com/example/crud/
-│       │   ├── CrudApplication.java       # Punto de entrada (@SpringBootApplication)
-│       │   ├── DataSeeder.java            # Carga de datos de ejemplo al iniciar
+│       │   ├── CrudApplication.java       # Entry point (@SpringBootApplication)
+│       │   ├── DataSeeder.java            # Loads sample data on startup
 │       │   ├── controller/
-│       │   │   └── ProductController.java # API REST /api/products
+│       │   │   └── ProductController.java # REST API /api/products
 │       │   ├── model/
-│       │   │   └── Product.java           # Entidad JPA
+│       │   │   └── Product.java           # JPA entity
 │       │   └── repository/
 │       │       └── ProductRepository.java # Spring Data JpaRepository
 │       └── resources/
-│           ├── application.properties     # Configuración (puerto, H2, JPA)
-│           └── static/                    # Frontend servido en la raíz "/"
-│               ├── index.html             # Página 1: CRUD de productos
-│               ├── rickandmorty.html      # Página 2: Rick and Morty Explorer
+│           ├── application.properties     # Configuration (port, H2, JPA)
+│           └── static/                    # Frontend served at the root "/"
+│               ├── index.html             # Page 1: Products CRUD
+│               ├── rickandmorty.html      # Page 2: Rick and Morty Explorer
 │               ├── css/
-│               │   └── styles.css         # Estilos responsive y modo oscuro
+│               │   └── styles.css         # Responsive styles and dark mode
 │               ├── js/
-│               │   ├── products.js        # Cliente de la API de productos
-│               │   └── rickandmorty.js    # Cliente de la API pública de Rick and Morty
+│               │   ├── products.js        # Products API client
+│               │   └── rickandmorty.js    # Rick and Morty public API client
 │               └── assets/
-│                   └── placeholder.svg    # Imagen local por defecto
-├── legacy-javaee/                    # Versión anterior Java EE (referencia, no se compila)
+│                   └── placeholder.svg    # Local default image
+├── legacy-javaee/                    # Previous Java EE version (reference only, not compiled)
 ├── mvnw / mvnw.cmd                   # Maven Wrapper (Unix / Windows)
-└── pom.xml                           # Dependencias y build de Maven
+└── pom.xml                           # Maven dependencies and build
 ```
