@@ -1,6 +1,7 @@
 'use strict';
 
 const API_URL = '/api/products';
+const PLACEHOLDER_IMAGE = 'assets/placeholder.svg';
 
 let products = [];
 let selectedProduct = null;
@@ -49,17 +50,15 @@ const api = {
 
 // ===== Rendering =====
 
+// Catalog cards always show the static "No Photo" placeholder instead of product.imageUrl
 function createImage(product, className) {
-    if (product.imageUrl) {
-        const img = document.createElement('img');
-        img.className = className;
-        img.src = product.imageUrl;
-        img.alt = product.name;
-        img.loading = 'lazy';
-        img.addEventListener('error', () => img.replaceWith(createPlaceholder(product, className)));
-        return img;
-    }
-    return createPlaceholder(product, className);
+    const img = document.createElement('img');
+    img.className = className;
+    img.src = PLACEHOLDER_IMAGE;
+    img.alt = product.name;
+    img.loading = 'lazy';
+    img.addEventListener('error', () => img.replaceWith(createPlaceholder(product, className)));
+    return img;
 }
 
 function createPlaceholder(product, className) {

@@ -8,6 +8,7 @@
  *   4. GET /location/{id}             -> current location detail (type, dimension, residents)
  */
 const API_BASE = 'https://rickandmortyapi.com/api';
+const SEARCH_DEBOUNCE_MS = 4000;
 
 const catalogView = document.getElementById('catalogView');
 const detailView = document.getElementById('detailView');
@@ -181,11 +182,13 @@ loadMoreButton.addEventListener('click', async () => {
     }
 });
 
-// Real-time search: filters instantly and then asks the API for every match
+// Debounced search: waits until typing stops, then filters and asks the API for every match
 searchInput.addEventListener('input', () => {
-    renderCatalog();
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => loadCharacters(searchInput.value.trim()), 350);
+    searchTimer = setTimeout(() => {
+        renderCatalog();
+        loadCharacters(searchInput.value.trim());
+    }, SEARCH_DEBOUNCE_MS);
 });
 
 // ===== Detail view =====
