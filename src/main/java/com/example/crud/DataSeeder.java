@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Inserts the 6 initial products when the table is empty.
- * With the in-memory H2 database this runs on every startup.
+ * Data persists in PostgreSQL, so on later startups the seed is skipped.
  */
 @Component
 public class DataSeeder implements CommandLineRunner {

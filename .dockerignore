@@ -1,0 +1,16 @@
+.git/
+.github/
+.idea/
+.vscode/
+target/
+legacy-javaee/
+*.iml
+nb-configuration.xml
+nbactions.xml
+.env
+config/
+.env.*
+docker-compose*.yml
+Dockerfile
+.dockerignore
+**/.DS_Store
