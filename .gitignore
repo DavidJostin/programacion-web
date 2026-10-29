@@ -1,2 +1,12 @@
-/target/ 
+/target/
 .DS_Store
+
+# IDE
+.idea/
+*.iml
+nb-configuration.xml
+nbactions.xml
+
+# Secrets: only .env.example is versioned
+.env
+/config/
