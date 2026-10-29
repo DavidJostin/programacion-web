@@ -1,5 +1,7 @@
 'use strict';
 
+// Relative on purpose: resolves against whatever host served the page (the API Gateway URL in AWS,
+// localhost in dev), so no IP or domain is hardcoded
 const API_URL = '/api/products';
 const PLACEHOLDER_IMAGE = 'assets/placeholder.svg';
 
