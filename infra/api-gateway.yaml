@@ -1,0 +1,246 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  WP-4 - AWS API Gateway (HTTP API) delante del backend Spring Boot.
+  El backend corre en una EC2 con el docker-compose de WP-1 (app + PostgreSQL).
+  Pensado para AWS Academy Learner Lab (no crea roles IAM).
+
+# ---------------------------------------------------------------------------
+# Parametros: lo que se llena en la consola al crear el stack
+# ---------------------------------------------------------------------------
+Parameters:
+  DbPassword:
+    Type: String
+    NoEcho: true            # no se muestra en la consola ni en los eventos
+    MinLength: 8
+    Description: Contrasena de PostgreSQL (minimo 8 caracteres)
+
+  GatewaySecret:
+    # Secreto compartido entre API Gateway y el backend. El Gateway lo manda en el
+    # header X-Gateway-Secret y la app rechaza (403) toda llamada /api/** que no lo traiga.
+    # Como solo AWS y la EC2 lo conocen, la unica forma de obtener 200 es pasar por el Gateway.
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    AllowedPattern: "^[A-Za-z0-9]+$"   # sin simbolos: evita problemas de comillas en el .env
+    Description: Secreto aleatorio de 32+ letras/numeros (ej. salida de "openssl rand -hex 32")
+
+  GitBranch:
+    Type: String
+    Default: test
+    Description: Rama del repo que se despliega en la EC2
+
+  InstanceType:
+    Type: String
+    Default: t3.small       # 2 GB de RAM: Maven necesita memoria para compilar la imagen
+    AllowedValues: [t3.small, t3.medium]
+
+  KeyName:
+    Type: String
+    Default: vockey         # key pair que trae el Learner Lab; dejar vacio para no usar SSH
+    Description: Key pair para entrar por SSH (opcional)
+
+  SshCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: Rango de IPs que pueden entrar por SSH (idealmente tu IP/32)
+
+  LatestAmiId:
+    # AMI mas reciente de Amazon Linux 2023, resuelta por AWS al crear el stack
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+Conditions:
+  HasKeyName: !Not [!Equals [!Ref KeyName, ""]]
+
+Resources:
+  # -------------------------------------------------------------------------
+  # 1. Backend: EC2 con Docker Compose
+  # -------------------------------------------------------------------------
+  BackendSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: HTTP para API Gateway y SSH para administracion
+      SecurityGroupIngress:
+        # API Gateway (HTTP API) llama al backend por Internet, por eso 80 queda abierto.
+        # No se puede filtrar por IP (el Gateway usa IPs compartidas de AWS que cambian);
+        # la proteccion de /api/** la hace el header X-Gateway-Secret en la app.
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SshCidr
+
+  BackendInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !If [HasKeyName, !Ref KeyName, !Ref AWS::NoValue]
+      SecurityGroupIds:
+        - !GetAtt BackendSecurityGroup.GroupId
+      Tags:
+        - Key: Name
+          Value: programacion-web-backend
+      # Script que corre una sola vez al primer arranque (log: /var/log/cloud-init-output.log)
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euxo pipefail
+
+          # Docker + Git
+          dnf install -y docker git
+          systemctl enable --now docker
+
+          # Plugins de Docker: compose (docker compose ...) y buildx (lo usa compose para "build")
+          mkdir -p /usr/local/lib/docker/cli-plugins
+          curl -fsSL https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-x86_64 \
+            -o /usr/local/lib/docker/cli-plugins/docker-compose
+          curl -fsSL https://github.com/docker/buildx/releases/download/v0.17.1/buildx-v0.17.1.linux-amd64 \
+            -o /usr/local/lib/docker/cli-plugins/docker-buildx
+          chmod +x /usr/local/lib/docker/cli-plugins/*
+
+          # Codigo de la app
+          git clone --branch ${GitBranch} https://github.com/DavidJostin/programacion-web.git /opt/app
+          cd /opt/app
+
+          # .env que lee docker-compose.yml (mismas variables que .env.example)
+          cat > .env <<'EOF'
+          POSTGRES_DB=crud_db
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=${DbPassword}
+          APP_PORT=80
+          SPRING_JPA_SHOW_SQL=false
+          GATEWAY_SECRET=${GatewaySecret}
+          EOF
+          chmod 600 .env
+
+          # restart: unless-stopped en el compose hace que todo vuelva a levantar
+          # cuando el Learner Lab apaga y prende la instancia
+          docker compose up -d --build
+
+  # IP fija: el Learner Lab apaga las EC2 al terminar la sesion y, sin Elastic IP,
+  # la IP publica cambiaria y API Gateway apuntaria a una direccion muerta
+  BackendEip:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref BackendInstance
+
+  # -------------------------------------------------------------------------
+  # 2. API Gateway (HTTP API)
+  # -------------------------------------------------------------------------
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: programacion-web-api
+      ProtocolType: HTTP
+      Description: Gateway publico de la API de productos
+      CorsConfiguration:
+        AllowOrigins: ["*"]
+        AllowMethods: [GET, POST, PUT, DELETE, OPTIONS]
+        AllowHeaders: [Content-Type]
+
+  # Integraciones: a donde reenvia el Gateway cada peticion (HTTP_PROXY = pasa la
+  # peticion y la respuesta tal cual, sin transformarlas)
+  #
+  # "overwrite:header.X-Gateway-Secret": el Gateway escribe el header con el secreto
+  # en cada peticion que reenvia a la EC2. Es "overwrite" y no "append" para que,
+  # si un cliente manda su propio X-Gateway-Secret adivinado, se reemplace por el
+  # valor real en vez de concatenarse. El cliente nunca ve este header: se agrega
+  # en el tramo Gateway -> EC2, no en la respuesta.
+  ProductsCollectionIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: HTTP_PROXY
+      IntegrationMethod: ANY      # usa el mismo metodo que llego al Gateway
+      IntegrationUri: !Sub http://${BackendEip}/api/products
+      RequestParameters:
+        "overwrite:header.X-Gateway-Secret": !Ref GatewaySecret
+      PayloadFormatVersion: "1.0"
+      TimeoutInMillis: 10000
+
+  ProductItemIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: HTTP_PROXY
+      IntegrationMethod: ANY
+      IntegrationUri: !Sub http://${BackendEip}
+      # Arma la ruta del backend con el {id} que llego en la ruta del Gateway
+      RequestParameters:
+        "overwrite:path": "/api/products/$request.path.id"
+        "overwrite:header.X-Gateway-Secret": !Ref GatewaySecret
+      PayloadFormatVersion: "1.0"
+      TimeoutInMillis: 10000
+
+  # Rutas: el contrato publico. Solo estas 5 operaciones pasan; cualquier otra
+  # ruta (ej. /h2-console) la rechaza el Gateway con 404
+  ListProductsRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: GET /api/products
+      Target: !Sub integrations/${ProductsCollectionIntegration}
+
+  CreateProductRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: POST /api/products
+      Target: !Sub integrations/${ProductsCollectionIntegration}
+
+  GetProductRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: GET /api/products/{id}
+      Target: !Sub integrations/${ProductItemIntegration}
+
+  UpdateProductRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: PUT /api/products/{id}
+      Target: !Sub integrations/${ProductItemIntegration}
+
+  DeleteProductRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: DELETE /api/products/{id}
+      Target: !Sub integrations/${ProductItemIntegration}
+
+  # Logs de acceso: una linea JSON por peticion en CloudWatch
+  ApiAccessLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /programacion-web/api-gateway
+      RetentionInDays: 7
+
+  # Stage $default con auto deploy: cada cambio en rutas se publica solo
+  # y la URL no lleva sufijo (/prod, /dev...)
+  DefaultStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: $default
+      AutoDeploy: true
+      # Throttling: protege al backend de rafagas de peticiones (responde 429)
+      DefaultRouteSettings:
+        ThrottlingRateLimit: 20     # peticiones por segundo sostenidas
+        ThrottlingBurstLimit: 40    # pico maximo momentaneo
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiAccessLogs.Arn
+        Format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","method":"$context.httpMethod","route":"$context.routeKey","status":"$context.status","latencyMs":"$context.responseLatency","backendStatus":"$context.integrationStatus"}'
+
+Outputs:
+  ApiUrl:
+    Description: URL publica del API Gateway (usar esta)
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/api/products
+  BackendUrl:
+    Description: URL directa de la EC2 (frontend estatico y pruebas)
+    Value: !Sub http://${BackendEip}
