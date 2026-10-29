@@ -214,6 +214,78 @@ Resources:
       RouteKey: DELETE /api/products/{id}
       Target: !Sub integrations/${ProductItemIntegration}
 
+  # -------------------------------------------------------------------------
+  # 3. Frontend estatico por el Gateway
+  # -------------------------------------------------------------------------
+  # La pagina se sirve desde la MISMA URL que la API, asi products.js llama a
+  # /api/products (ruta relativa) y el navegador lo resuelve contra el dominio
+  # del Gateway: no hace falta conocer la IP de la EC2 ni configurar CORS.
+  #
+  # Una sola integracion para todos los estaticos: "overwrite:path" con
+  # $request.path reenvia la ruta tal cual llego (/css/styles.css -> /css/styles.css).
+  # Lleva el mismo header secreto que la API, aunque el filtro solo exige el
+  # secreto en /api/**: asi, si algun dia se protegen tambien los estaticos,
+  # el Gateway ya cumple sin tocar la plantilla.
+  StaticIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: HTTP_PROXY
+      IntegrationMethod: GET
+      IntegrationUri: !Sub http://${BackendEip}
+      RequestParameters:
+        "overwrite:path": "$request.path"
+        "overwrite:header.X-Gateway-Secret": !Ref GatewaySecret
+      PayloadFormatVersion: "1.0"
+      TimeoutInMillis: 10000
+
+  # Rutas explicitas (no un /{proxy+} global): solo se publican las paginas y
+  # las 3 carpetas de static/. Asi /api/otra-cosa, /error, etc. siguen dando 404
+  # en el Gateway y el contrato publico queda cerrado.
+  # Solo GET: los estaticos son de lectura.
+  RootPageRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: GET /                      # Spring responde index.html
+      Target: !Sub integrations/${StaticIntegration}
+
+  IndexPageRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: GET /index.html
+      Target: !Sub integrations/${StaticIntegration}
+
+  RickAndMortyPageRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: GET /rickandmorty.html
+      Target: !Sub integrations/${StaticIntegration}
+
+  # {proxy+} = cualquier ruta dentro de la carpeta (ej. /js/products.js)
+  CssRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: GET /css/{proxy+}
+      Target: !Sub integrations/${StaticIntegration}
+
+  JsRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: GET /js/{proxy+}
+      Target: !Sub integrations/${StaticIntegration}
+
+  AssetsRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: GET /assets/{proxy+}
+      Target: !Sub integrations/${StaticIntegration}
+
   # Logs de acceso: una linea JSON por peticion en CloudWatch
   ApiAccessLogs:
     Type: AWS::Logs::LogGroup
@@ -238,9 +310,12 @@ Resources:
         Format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","method":"$context.httpMethod","route":"$context.routeKey","status":"$context.status","latencyMs":"$context.responseLatency","backendStatus":"$context.integrationStatus"}'
 
 Outputs:
+  AppUrl:
+    Description: Punto de entrada unico (frontend + API) - abrir en el navegador
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/
   ApiUrl:
-    Description: URL publica del API Gateway (usar esta)
+    Description: API de productos por el Gateway
     Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/api/products
   BackendUrl:
-    Description: URL directa de la EC2 (frontend estatico y pruebas)
+    Description: IP directa de la EC2 - solo para SSH y para probar el 403
     Value: !Sub http://${BackendEip}
